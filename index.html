@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Destination Route Planner</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="styles.css?v=20260817-1" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div>
+            <p class="eyebrow">Destination planner</p>
+            <h1>Route Map</h1>
+          </div>
+          <button id="clear-route" class="clear-route-btn" type="button">Clear Route</button>
+        </div>
+
+        <label class="search-wrap" for="destination-search">
+          <span>Search destinations</span>
+          <input id="destination-search" type="search" placeholder="Search for a city or address" />
+        </label>
+
+        <div id="destination-list" class="destination-list" aria-live="polite"></div>
+      </aside>
+
+      <main class="map-panel">
+        <section class="route-panel" aria-label="Selected stops panel">
+          <div class="map-topbar">
+            <div>
+              <p class="eyebrow">Selected stops</p>
+              <h2 id="route-summary">0 destinations</h2>
+            </div>
+          </div>
+
+          <div id="route-list" class="route-list" aria-live="polite"></div>
+        </section>
+
+        <div id="map" aria-label="Route map"></div>
+      </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="script.js?v=20260818-1" defer></script>
+  </body>
+</html>
