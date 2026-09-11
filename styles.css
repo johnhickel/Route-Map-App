@@ -305,7 +305,7 @@ h2 {
 .route-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0;
   background: rgba(125, 172, 214, 0.1);
   border: 1px solid rgba(125, 172, 214, 0.18);
   color: var(--text);
@@ -334,7 +334,7 @@ h2 {
 .route-name {
   flex: 1;
   min-width: 0;
-  padding: 10px 0;
+  padding: 10px 8px;
   font-size: 1.1rem;
   font-weight: 600;
 }
@@ -380,6 +380,30 @@ h2 {
   line-height: 1;
   padding-bottom: 2px;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.route-action.marker-visibility {
+  width: 42px;
+  min-width: 42px;
+  padding: 0;
+  border-radius: 0;
+  background: rgba(109, 213, 255, 0.14);
+  color: var(--text);
+}
+
+.visibility-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.route-action.marker-visibility:hover {
+  background: var(--accent);
+  color: #102535;
 }
 
 .route-action.remove:hover {

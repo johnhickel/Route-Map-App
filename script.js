@@ -96,6 +96,7 @@ let destinations = [...new Map(
 let destinationMap = new Map(destinations.map((item) => [item.id, item]));
 let customDestinationSequence = Math.max(0, ...destinations.map((item) => item.id)) + 1;
 const routeOrder = [];
+const hiddenDestinationIds = new Set();
 const map = L.map("map", {
   zoomControl: true,
   worldCopyJump: true,
@@ -114,6 +115,39 @@ let routeMarkers = [];
 let routeMarkerBase = [];
 
 const MARKER_SIZE = 40;
+
+function updateRoutePath() {
+  const path = routeOrder
+    .map((id) => destinationMap.get(id)?.name)
+    .filter(Boolean)
+    .map((name) => encodeURIComponent(name))
+    .join("/");
+
+  const nextUrl = `${window.location.origin}${path ? `/${path}` : "/"}`;
+  window.history.replaceState(null, "", nextUrl);
+}
+
+function loadRouteFromPath() {
+  const segments = window.location.pathname.split("/").filter(Boolean);
+  if (!segments.length) return false;
+
+  const destinationIds = new Map(
+    destinations.map((destination) => [destination.name.trim().toLowerCase(), destination.id])
+  );
+  const selectedIds = segments.map((segment) => {
+    try {
+      return destinationIds.get(decodeURIComponent(segment).trim().toLowerCase());
+    } catch {
+      return undefined;
+    }
+  }).filter((id) => id !== undefined);
+
+  if (!selectedIds.length) return false;
+
+  routeOrder.length = 0;
+  routeOrder.push(...new Set(selectedIds));
+  return true;
+}
 
 function getMarkerScaleForZoom() {
   const zoom = map.getZoom();
@@ -198,7 +232,9 @@ function createOverlappedMarkerIcon(numbers) {
 
 function rebuildRouteMarkersFromBase() {
   routeMarkers.forEach((marker) => map.removeLayer(marker));
-  routeMarkers = routeMarkerBase.map(({ destination, number }) => {
+  routeMarkers = routeMarkerBase
+    .filter(({ destination }) => !hiddenDestinationIds.has(destination.id))
+    .map(({ destination, number }) => {
     const marker = L.marker([destination.lat, destination.lng], {
       icon: createNumberedMarker(number),
       number,
@@ -206,7 +242,7 @@ function rebuildRouteMarkersFromBase() {
     applyMarkerShape(marker, false);
     marker.bindPopup(`<strong>${number}. ${destination.name}</strong><br>${destination.country}`);
     return marker;
-  });
+    });
 }
 
 function refreshMarkerLayout() {
@@ -429,9 +465,29 @@ function renderRouteList() {
     <div class="route-item" draggable="true" data-id="${destination.id}">
       <span class="route-badge">${index + 1}</span>
       <span class="route-name">${destination.name}</span>
+      <button class="route-action marker-visibility" type="button" data-action="toggle-visibility" data-id="${destination.id}" aria-label="${hiddenDestinationIds.has(destination.id) ? "Show" : "Hide"} marker for ${destination.name}">
+        <svg class="visibility-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          ${hiddenDestinationIds.has(destination.id)
+            ? '<path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 4.2A10.8 10.8 0 0 1 12 4c5 0 8.8 4.1 10 8a11.8 11.8 0 0 1-3.2 5.1M6.2 6.2C4.2 7.5 2.8 9.7 2 12c1.2 3.9 5 8 10 8 1.2 0 2.3-.2 3.3-.6" />'
+            : '<path d="M2 12s3.8-8 10-8 10 8 10 8-3.8 8-10 8S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />'}
+        </svg>
+      </button>
       <button class="route-action remove" type="button" data-action="remove" data-id="${destination.id}" aria-label="Remove ${destination.name}">×</button>
     </div>
   `).join("");
+}
+
+function toggleDestinationMarker(id) {
+  if (hiddenDestinationIds.has(id)) {
+    hiddenDestinationIds.delete(id);
+  } else {
+    hiddenDestinationIds.add(id);
+  }
+
+  rebuildRouteMarkersFromBase();
+  reconcileOverlappingMarkers();
+  updateMarkerScale();
+  renderRouteList();
 }
 
 function reorderRouteByDrag(sourceId, targetId, insertBefore) {
@@ -461,6 +517,7 @@ function reorderRouteByDrag(sourceId, targetId, insertBefore) {
 
   renderDestinationList();
   renderRouteList();
+  updateRoutePath();
   buildRoutePolyline();
 }
 
@@ -636,14 +693,7 @@ async function fetchRouteWithActualRoads(destinations) {
     number: index + 1,
   }));
 
-  routeMarkers = routeMarkerBase.map(({ destination, number }) => {
-    const marker = L.marker([destination.lat, destination.lng], {
-      icon: createNumberedMarker(number),
-      number,
-    }).addTo(map);
-    marker.bindPopup(`<strong>${number}. ${destination.name}</strong><br>${destination.country}`);
-    return marker;
-  });
+  rebuildRouteMarkersFromBase();
 
   const bounds = L.latLngBounds(destinations.map((d) => [d.lat, d.lng]));
   map.fitBounds(bounds.pad(0.25));
@@ -665,15 +715,18 @@ function moveRouteItem(id, direction) {
 
   renderDestinationList();
   renderRouteList();
+  updateRoutePath();
   buildRoutePolyline();
 }
 
 function removeRouteItem(id) {
   const index = routeOrder.indexOf(id);
   if (index >= 0) routeOrder.splice(index, 1);
+  hiddenDestinationIds.delete(id);
 
   renderDestinationList();
   renderRouteList();
+  updateRoutePath();
   buildRoutePolyline();
 }
 
@@ -699,6 +752,7 @@ function loadSampleRoute() {
   destinationSearch.value = "";
   renderDestinationList();
   renderRouteList();
+  updateRoutePath();
   buildRoutePolyline();
 }
 
@@ -730,16 +784,22 @@ function setUpEvents() {
     destinationList.classList.remove("visible");
     renderDestinationList();
     renderRouteList();
+    updateRoutePath();
     buildRoutePolyline();
   });
 
   routeList.addEventListener("click", (event) => {
-    const button = event.target;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const button = target.closest(".route-action");
     if (!(button instanceof HTMLElement)) return;
+
     const action = button.dataset.action;
     const id = Number(button.dataset.id);
 
     if (action === "remove") removeRouteItem(id);
+    if (action === "toggle-visibility") toggleDestinationMarker(id);
   });
 
   routeList.addEventListener("dragstart", (event) => {
@@ -801,9 +861,11 @@ function setUpEvents() {
 
   clearButton.addEventListener("click", () => {
     routeOrder.length = 0;
+    hiddenDestinationIds.clear();
     destinationSearch.value = "";
     renderDestinationList();
     renderRouteList();
+    updateRoutePath();
     buildRoutePolyline();
   });
 
@@ -811,7 +873,7 @@ function setUpEvents() {
 
 initialiseMap();
 setUpEvents();
+loadRouteFromPath();
 renderDestinationList();
 renderRouteList();
 buildRoutePolyline();
-loadSampleRoute();
