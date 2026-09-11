@@ -115,6 +115,7 @@ let routeMarkers = [];
 let routeMarkerBase = [];
 
 const MARKER_SIZE = 40;
+const ROUTE_BASE_PATH = "/Route-Map-App";
 
 function updateRoutePath() {
   const path = routeOrder
@@ -123,12 +124,16 @@ function updateRoutePath() {
     .map((name) => encodeURIComponent(name))
     .join("/");
 
-  const nextUrl = `${window.location.origin}${path ? `/${path}` : "/"}`;
+  const nextUrl = `${window.location.origin}${ROUTE_BASE_PATH}${path ? `/${path}` : "/"}`;
   window.history.replaceState(null, "", nextUrl);
 }
 
 function loadRouteFromPath() {
-  const segments = window.location.pathname.split("/").filter(Boolean);
+  const pathname = window.location.pathname;
+  const routePath = pathname.toLowerCase().startsWith(`${ROUTE_BASE_PATH.toLowerCase()}/`)
+    ? pathname.slice(ROUTE_BASE_PATH.length)
+    : pathname;
+  const segments = routePath.split("/").filter(Boolean);
   if (!segments.length) return false;
 
   const destinationIds = new Map(
@@ -874,6 +879,7 @@ function setUpEvents() {
 initialiseMap();
 setUpEvents();
 loadRouteFromPath();
+updateRoutePath();
 renderDestinationList();
 renderRouteList();
 buildRoutePolyline();
