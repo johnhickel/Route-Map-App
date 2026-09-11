@@ -573,6 +573,13 @@ function getDropInsertion(targetEvent) {
 function buildRoutePolyline() {
   const selected = routeOrder.map((id) => destinationMap.get(id)).filter(Boolean);
 
+  window.requestAnimationFrame(() => {
+    map.invalidateSize();
+    if (selected.length > 1) {
+      map.fitBounds(L.latLngBounds(selected.map((destination) => [destination.lat, destination.lng])).pad(0.25));
+    }
+  });
+
   if (routeLayer) {
     map.removeLayer(routeLayer);
     routeLayer = null;
